@@ -1,0 +1,74 @@
+{
+  "_comment": "icon Editor Webview Configuration",
+
+  "window": {
+    "title": "IconPenguins",
+    "icon": "icon.ico",
+    "width": 1920,
+    "height": 1080,
+    "x": null,
+    "y": null,
+    "maximized": false,
+    "fullscreen": false,
+    "frameless": false,
+    "hide_menu_bar": true,
+    "resizable": true,
+    "always_on_top": false,
+    "opacity": 1.0,
+    "minimum_width": 400,
+    "minimum_height": 300
+  },
+
+  "url": {
+    "_comment_target": "支持: https://...  |  file:///...  |  ./index.html  |  C:\\path\\to\\file.html",
+    "target": "./icon-editor.html",
+    "zoom_factor": 1.0
+  },
+
+  "behavior": {
+    "close_to_tray": false,
+    "confirm_on_close": false,
+    "confirm_on_close_message": "确定要退出吗？",
+    "reload_on_focus": false,
+    "reload_interval_seconds": 0,
+    "open_links_in_external_browser": true,
+    "enable_context_menu": true
+  },
+
+  "developer": {
+    "enable_devtools": false,
+    "enable_devtools_shortcut": true
+  },
+
+  "javascript": {
+    "enabled": true,
+    "console_to_python": false,
+    "injection_scripts": []
+  },
+
+  "network": {
+    "user_agent": null,
+    "enable_cache": true,
+    "enable_cookies": true
+  },
+
+  "keyboard_shortcuts": {
+    "reload": "Ctrl+R",
+    "devtools": "F12",
+    "fullscreen": "F11",
+    "back": "Alt+Left",
+    "forward": "Alt+Right"
+  },
+
+  "events": {
+    "on_start": [
+      "echo [WebView] 程序已启动"
+    ],
+    "on_page_load": [
+      "echo [WebView] 页面加载完成"
+    ],
+    "on_exit": [
+      "echo [WebView] 程序退出"
+    ]
+  }
+}

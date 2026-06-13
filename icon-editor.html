@@ -1,0 +1,1839 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelCraft — Icon Editor</title>
+<link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABlElEQVR4AeyWMUrEQBSGowjb6NpsIViJF7CytNAEDyB4AUsLb6DgEeztBfEEiYhgZ+EJLAULEdzFQhTW74dJyKbwzWQnKLLh/byZyeS9Ly8zQ+aTX75mAH+/Anmej7mGKMQufJeWWYEsy+a4+gS8QrKXoigSxipjUPeP8I9ojDYEjjfNBCgjkHTPtT+crxwkI3TGnHUGb9AK8jJvAJ9oqhYQ22jZZ77mRAVQQEGkaXqCLtW3FB1ACfkcp2hfbUvRALToJCth8340AEp+jq6bCax+NAASLaJgiwLgSr8TnJ0H2gCsUuqkfiyqT6wBCrY2AE/s8+okJGNfffwbCrY2ABNJ2G4j7X0G71CwTQ1Qy/hca3s3owHwGQ5Q8EKMBqDPIHm/upsYDcDFC3adAbBNj9358CNUZwBk3UWmdQLA27+T+QGZ5g3AaVf+kvWaUUm4pHLjb9En97/YEYd400wAF1i/YeUv2QCYiaOYLEON4bfQAnqlv+mzK0wABeG066EQW2PyPSCmmQBmhCknzAD+fwWsJfINAAD///Fbx8gAAAAGSURBVAMAjB+4QStQ0xYAAAAASUVORK5CYII=">
+<style>
+/* ========== THEME & RESET ========== */
+:root {
+  --bg: #1e1e2e; --bg2: #2a2a3c; --bg3: #33334a;
+  --fg: #e0e0e8; --fg2: #a0a0b8; --border: #3a3a50;
+  --accent: #6c8cff; --accent2: #4a6aff; --danger: #ff5e5e;
+  --grid: rgba(255,255,255,0.06); --shadow: 0 2px 12px rgba(0,0,0,0.3);
+  --radius: 6px; --font: 'Segoe UI', system-ui, sans-serif;
+  --canvas-bg: #fff; --preview-bg: #ccc;
+  touch-action: none;
+}
+[data-theme="light"] {
+  --bg: #f0f0f5; --bg2: #e8e8ef; --bg3: #dcdce5;
+  --fg: #1a1a2e; --fg2: #5a5a70; --border: #c8c8d8;
+  --accent: #4060e0; --accent2: #3050cc; --danger: #cc3030;
+  --grid: rgba(0,0,0,0.08); --shadow: 0 2px 12px rgba(0,0,0,0.12);
+  --canvas-bg: #fff; --preview-bg: #bbb;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:var(--font);font-size:13px;color:var(--fg);
+  background:var(--bg);display:flex;flex-direction:column;
+  user-select:none;-webkit-user-select:none;
+}
+/* ========== TOP TOOLBAR ========== */
+#toolbar{
+  display:flex;align-items:center;gap:6px;padding:6px 10px;
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  flex-shrink:0;flex-wrap:wrap;min-height:42px;
+}
+.tool-group{display:flex;gap:2px;align-items:center}
+.tool-group + .tool-group{margin-left:6px;padding-left:6px;border-left:1px solid var(--border)}
+#toolbar button,.tool-btn{
+  width:32px;height:32px;border:1px solid transparent;border-radius:var(--radius);
+  background:transparent;color:var(--fg2);cursor:pointer;font-size:15px;
+  display:flex;align-items:center;justify-content:center;transition:.12s;
+  position:relative;line-height:1;
+}
+#toolbar button:hover,.tool-btn:hover{background:var(--bg3);color:var(--fg)}
+#toolbar button.active,.tool-btn.active{
+  background:var(--accent);color:#fff;border-color:var(--accent2);
+}
+#toolbar select{
+  height:32px;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg);color:var(--fg);padding:0 8px;font-size:12px;
+  cursor:pointer;outline:none;
+}
+#toolbar select:focus{border-color:var(--accent)}
+#toolbar .sep{width:1px;height:20px;background:var(--border);margin:0 4px}
+.zoom-label{font-size:12px;color:var(--fg2);min-width:40px;text-align:center}
+
+/* ========== MAIN LAYOUT ========== */
+#main{display:flex;flex:1;overflow:hidden}
+#left-panel{
+  width:180px;flex-shrink:0;background:var(--bg2);
+  border-right:1px solid var(--border);display:flex;flex-direction:column;
+  padding:10px;gap:10px;overflow-y:auto;
+}
+#right-panel{
+  width:200px;flex-shrink:0;background:var(--bg2);
+  border-left:1px solid var(--border);display:flex;flex-direction:column;
+  padding:10px;gap:10px;overflow-y:auto;
+}
+#canvas-wrap{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  overflow:auto;position:relative;background:var(--bg);
+  /* checkerboard for transparency */
+  background-image:
+    linear-gradient(45deg,var(--bg3) 25%,transparent 25%),
+    linear-gradient(-45deg,var(--bg3) 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,var(--bg3) 75%),
+    linear-gradient(-45deg,transparent 75%,var(--bg3) 75%);
+  background-size:20px 20px;
+  background-position:0 0,0 10px,10px -10px,-10px 0;
+}
+#canvas-stack{position:relative;line-height:0}
+#main-canvas{display:block;touch-action:none}
+#overlay-canvas{position:absolute;top:0;left:0;pointer-events:none}
+/* ========== PANELS ========== */
+.panel-title{
+  font-size:11px;font-weight:700;text-transform:uppercase;
+  color:var(--fg2);letter-spacing:.5px;margin-bottom:2px;
+}
+/* Color palette */
+#palette{display:grid;grid-template-columns:repeat(8,1fr);gap:2px}
+#palette .swatch{
+  aspect-ratio:1;border-radius:3px;cursor:pointer;border:2px solid transparent;
+  transition:transform .1s, border-color .1s;
+}
+#palette .swatch:hover{transform:scale(1.15);z-index:1}
+#palette .swatch.active{border-color:var(--fg);box-shadow:0 0 0 1px var(--bg)}
+#custom-color-wrap{display:flex;gap:6px;align-items:center}
+#custom-color{width:36px;height:36px;border:none;cursor:pointer;border-radius:var(--radius);padding:0;background:none}
+#alpha-slider{flex:1}
+#alpha-val{font-size:11px;color:var(--fg2);min-width:28px}
+/* Layers */
+#layers-list{display:flex;flex-direction:column;gap:3px;max-height:260px;overflow-y:auto}
+.layer-row{
+  display:flex;align-items:center;gap:6px;padding:6px 8px;
+  background:var(--bg);border-radius:var(--radius);border:1px solid transparent;
+  cursor:pointer;font-size:12px;transition:.1s;
+}
+.layer-row:hover{background:var(--bg3)}
+.layer-row.active{border-color:var(--accent);background:var(--bg3)}
+.layer-row .vis-toggle{font-size:14px;cursor:pointer;color:var(--fg2)}
+.layer-row .vis-toggle.hidden{opacity:.35}
+.layer-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.layer-actions{display:flex;gap:2px}
+.layer-actions button{
+  width:22px;height:22px;font-size:11px;border:none;background:transparent;
+  color:var(--fg2);cursor:pointer;border-radius:3px;display:flex;
+  align-items:center;justify-content:center;
+}
+.layer-actions button:hover{background:var(--border);color:var(--fg)}
+#layer-btns{display:flex;gap:4px;flex-wrap:wrap}
+#layer-btns button{
+  flex:1;min-width:40px;padding:5px 6px;border:1px solid var(--border);
+  border-radius:var(--radius);background:var(--bg);color:var(--fg);
+  cursor:pointer;font-size:11px;transition:.12s;white-space:nowrap;
+}
+#layer-btns button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* Preview */
+#preview-box{
+  border:1px solid var(--border);border-radius:var(--radius);
+  background-image:
+    linear-gradient(45deg,#888 25%,transparent 25%),
+    linear-gradient(-45deg,#888 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#888 75%),
+    linear-gradient(-45deg,transparent 75%,#888 75%);
+  background-size:12px 12px;
+  background-position:0 0,0 6px,6px -6px,-6px 0;
+  display:flex;align-items:center;justify-content:center;
+  min-height:80px;padding:10px;
+}
+#preview-canvas{image-rendering:pixelated}
+/* ========== BOTTOM BAR ========== */
+#statusbar{
+  display:flex;align-items:center;gap:12px;padding:3px 10px;
+  background:var(--bg2);border-top:1px solid var(--border);
+  font-size:11px;color:var(--fg2);flex-shrink:0;min-height:24px;
+}
+/* ========== TOOLTIPS ========== */
+[title]{position:relative}
+/* ========== SCROLLBAR ========== */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--fg2)}
+/* ========== RESPONSIVE ========== */
+@media(max-width:900px){
+  #left-panel{width:140px;padding:6px}
+  #right-panel{width:160px;padding:6px}
+  #palette{grid-template-columns:repeat(6,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <div class="tool-group">
+    <button id="t-pencil" class="active" title="铅笔 (B)">✏️</button>
+    <button id="t-eraser" title="橡皮 (E)">🧹</button>
+    <button id="t-eyedropper" title="取色器 (I)">💉</button>
+    <button id="t-fill" title="填充 (G)">🪣</button>
+    <button id="t-line" title="直线 (L)">📏</button>
+    <button id="t-text" title="文字 (T)">🔤</button>
+    <button id="t-select" title="框选 (M)">▣</button>
+  </div>
+  <span class="sep"></span>
+  <div class="tool-group">
+    <select id="font-select" title="文字大小" style="width:56px">
+      <option value="6">6px</option>
+      <option value="8">8px</option>
+      <option value="10">10px</option>
+      <option value="12" selected>12px</option>
+      <option value="14">14px</option>
+      <option value="16">16px</option>
+      <option value="20">20px</option>
+      <option value="24">24px</option>
+      <option value="32">32px</option>
+    </select>
+  </div>
+  <span class="sep"></span>
+  <div class="tool-group">
+    <button id="undo-btn" title="撤销 (Ctrl+Z)">↩</button>
+    <button id="redo-btn" title="重做 (Ctrl+Shift+Z)">↪</button>
+  </div>
+  <span class="sep"></span>
+  <div class="tool-group">
+    <select id="size-select" title="图标尺寸">
+      <option value="16">16×16</option>
+      <option value="24">24×24</option>
+      <option value="32" selected>32×32</option>
+      <option value="48">48×48</option>
+      <option value="64">64×64</option>
+      <option value="96">96×96</option>
+      <option value="128">128×128</option>
+      <option value="256">256×256</option>
+    </select>
+  </div>
+  <span class="sep"></span>
+  <div class="tool-group">
+    <button id="zoom-out" title="缩小 (-)">➖</button>
+    <span class="zoom-label" id="zoom-label">800%</span>
+    <button id="zoom-in" title="放大 (+)">➕</button>
+    <button id="zoom-fit" title="适应窗口">🔲</button>
+  </div>
+  <span class="sep"></span>
+  <div class="tool-group">
+    <button id="grid-toggle" class="active" title="切换网格 (Ctrl+G)">🔲</button>
+    <button id="theme-toggle" title="切换主题">🌓</button>
+  </div>
+  <span class="sep"></span>
+  <div class="tool-group">
+    <button id="export-png" title="导出 PNG (Ctrl+S)">💾</button>
+    <button id="export-ico" title="导出 ICO">🖼</button>
+    <button id="export-svg" title="导出 SVG">📄</button>
+    <button id="copy-b64" title="复制 Base64">📋</button>
+    <button id="import-file" title="导入图片">📂</button>
+    <input type="file" id="file-input" accept="image/*" style="display:none">
+  </div>
+  <span class="sep"></span>
+  <div class="tool-group">
+    <button id="clear-btn" title="清除当前图层" style="color:var(--danger)">🗑</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <!-- LEFT: Color Panel -->
+  <div id="left-panel">
+    <div class="panel-title">调色板</div>
+    <div id="palette"></div>
+    <div id="custom-color-wrap">
+      <input type="color" id="custom-color" value="#ffffff">
+      <input type="range" id="alpha-slider" min="0" max="255" value="255" title="不透明度">
+      <span id="alpha-val">255</span>
+    </div>
+    <div style="display:flex;gap:4px;align-items:center;font-size:11px;color:var(--fg2)">
+      <span>当前:</span>
+      <span id="cur-color-swatch" style="display:inline-block;width:16px;height:16px;border-radius:3px;border:1px solid var(--border);background:#fff"></span>
+      <span id="cur-color-text">#ffffffff</span>
+    </div>
+  </div>
+
+  <!-- CENTER: Canvas -->
+  <div id="canvas-wrap">
+    <div id="canvas-stack">
+      <canvas id="main-canvas"></canvas>
+      <canvas id="overlay-canvas"></canvas>
+      <input type="text" id="text-input" style="display:none;position:absolute;background:var(--bg2);color:var(--fg);border:1px solid var(--accent);border-radius:3px;font-family:monospace;padding:2px 4px;outline:none;z-index:10;pointer-events:auto;min-width:40px" maxlength="80" placeholder="文字...">
+    </div>
+  </div>
+
+  <!-- RIGHT: Layers & Preview -->
+  <div id="right-panel">
+    <div class="panel-title">图层</div>
+    <div id="layers-list"></div>
+    <div id="layer-btns">
+      <button id="layer-add" title="新建图层">＋ 新建</button>
+      <button id="layer-dup" title="复制图层">⧉ 复制</button>
+      <button id="layer-merge" title="向下合并">↓ 合并</button>
+      <button id="layer-del" title="删除图层">✕ 删除</button>
+      <button id="layer-up" title="上移">▲</button>
+      <button id="layer-down" title="下移">▼</button>
+    </div>
+    <div class="panel-title" style="margin-top:8px">预览</div>
+    <div id="preview-box"><canvas id="preview-canvas"></canvas></div>
+  </div>
+</div>
+
+<!-- STATUSBAR -->
+<div id="statusbar">
+  <span id="status-pos">X: 0, Y: 0</span>
+  <span id="status-tool">工具: 铅笔</span>
+  <span id="status-size">尺寸: 32×32</span>
+  <span id="status-msg"></span>
+</div>
+
+<script>
+// ============================================================
+// PixelCraft — Single-file Icon Editor
+// ============================================================
+(() => {
+'use strict';
+
+// ── DOM refs ──────────────────────────────────────────
+const $ = (s, p=document) => p.querySelector(s);
+const $$ = (s, p=document) => [...p.querySelectorAll(s)];
+
+const mainCanvas = $('#main-canvas');
+const overlayCanvas = $('#overlay-canvas');
+const mainCtx = mainCanvas.getContext('2d');
+const overlayCtx = overlayCanvas.getContext('2d');
+const previewCanvas = $('#preview-canvas');
+const previewCtx = previewCanvas.getContext('2d');
+const canvasWrap = $('#canvas-wrap');
+const statusPos = $('#status-pos');
+const statusTool = $('#status-tool');
+const statusSize = $('#status-size');
+const statusMsg = $('#status-msg');
+const zoomLabel = $('#zoom-label');
+const textInput = $('#text-input');
+const fontSelect = $('#font-select');
+
+// ── Cached computed values (updated on theme change) ──
+let gridColor = 'rgba(255,255,255,0.06)';
+let _tempCanvas = null; // reused offscreen canvas for rendering
+let _fsCanvas = null;    // reused canvas for floatingSel render
+
+// ── State ──────────────────────────────────────────────
+const PRESET_COLORS = [
+  '#000000','#ffffff','#ff4444','#ff8800','#ffee00','#44ff44','#44ffff','#4488ff',
+  '#8844ff','#ff44ff','#888888','#cccccc','#880000','#884400','#888800','#008800',
+  '#008888','#000088','#440088','#880088','#442222','#664400','#446600','#004444',
+  '#002244','#220044','#440044','#333333','#666666','#999999','#bbbbbb','#dddddd',
+];
+
+let iconSize = 32;
+let zoom = 8;
+let showGrid = true;
+let activeTool = 'pencil';
+let activeLayerIdx = 0;
+let layers = [];           // { name, data: ImageData, visible }
+let undoStack = [];
+let redoStack = [];
+let maxUndo = 80;
+let isDrawing = false;
+let drawStartX = 0, drawStartY = 0;
+let linePreview = null;   // { x0, y0, x1, y1 } or null
+let fgColor = [255,255,255,255];  // RGBA
+let fontSize = 12;               // text tool font size
+let textCommitPos = null;        // {x,y} where text will be placed (input phase)
+let _textCommitting = false;     // guard against double commit
+/* textPreview — floating preview before final commit:
+   { text, srcCanvas (offscreen render), x, y, scale, tw, th } | null  */
+let textPreview = null;
+let _previewDrag = null;         // { mode:'move'|'resize'|…', sx, sy, ox, oy, oscale }
+/* selection — marquee tool + floating stamp:
+   marquee: { x0,y0,x1,y1 } during drag → becomes { x,y,w,h } with ImageData
+   floating: { x,y,w,h, data:ImageData } — pixels being placed */
+let selectRect = null;           // { x0,y0,x1,y1 } during marquee drag, or { x,y,w,h } finalized rect
+let floatingSel = null;          // { x,y,w,h, data:ImageData } floating stamp before commit
+let selClipboard = null;         // { w,h, data:ImageData } internal clipboard
+let _selDrag = null;             // { sx,sy, ox,oy } for floating selection move
+
+// ── Color helpers ─────────────────────────────────────
+function rgbaStr(rgba) {
+  const [r,g,b,a] = rgba;
+  return `rgba(${r},${g},${b},${(a/255).toFixed(2)})`;
+}
+function rgbaHex(rgba) {
+  const [r,g,b,a] = rgba;
+  const hex = '#' + [r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
+  return a===255 ? hex : hex + a.toString(16).padStart(2,'0');
+}
+function hexToRgba(hex) {
+  hex = hex.replace('#','');
+  if (hex.length===6) hex += 'ff';
+  if (hex.length===8) return [
+    parseInt(hex.slice(0,2),16),
+    parseInt(hex.slice(2,4),16),
+    parseInt(hex.slice(4,6),16),
+    parseInt(hex.slice(6,8),16)
+  ];
+  return [0,0,0,255];
+}
+function rgbaMatch(a,b){return a[0]===b[0]&&a[1]===b[1]&&a[2]===b[2]&&a[3]===b[3]}
+
+// ── Layer management ──────────────────────────────────
+function createLayerData() {
+  const d = new ImageData(iconSize, iconSize);
+  // Initialize to transparent
+  for (let i=0;i<d.data.length;i+=4){d.data[i+3]=0}
+  return d;
+}
+function addLayer(name, data) {
+  layers.push({ name: name||`图层 ${layers.length+1}`, data: data||createLayerData(), visible:true });
+  activeLayerIdx = layers.length-1;
+  clearHistory();
+}
+function deleteLayer(idx) {
+  if (layers.length<=1) return;
+  layers.splice(idx,1);
+  if (activeLayerIdx>=layers.length) activeLayerIdx=layers.length-1;
+  clearHistory();
+}
+function duplicateLayer(idx) {
+  const src = layers[idx];
+  const copy = new ImageData(new Uint8ClampedArray(src.data.data), iconSize, iconSize);
+  layers.splice(idx+1, 0, { name: src.name+' 副本', data: copy, visible: true });
+  activeLayerIdx = idx+1;
+  clearHistory();
+}
+function mergeDown(idx) {
+  if (idx<=0) return;
+  const upper = layers[idx].data;
+  const lower = layers[idx-1].data;
+  const ud = upper.data, ld = lower.data;
+  for (let i=0;i<ud.length;i+=4) {
+    const ua = ud[i+3]/255;
+    if (ua===0) continue;
+    if (ua>=1||ld[i+3]===0) { ld[i]=ud[i];ld[i+1]=ud[i+1];ld[i+2]=ud[i+2];ld[i+3]=ud[i+3]; }
+    else {
+      const la = ld[i+3]/255;
+      const outA = ua + la*(1-ua);
+      if (outA===0) { ld[i+3]=0; continue; }
+      ld[i]   = Math.round((ud[i]*ua + ld[i]  *la*(1-ua))/outA);
+      ld[i+1] = Math.round((ud[i+1]*ua + ld[i+1]*la*(1-ua))/outA);
+      ld[i+2] = Math.round((ud[i+2]*ua + ld[i+2]*la*(1-ua))/outA);
+      ld[i+3] = Math.round(outA*255);
+    }
+  }
+  layers.splice(idx,1);
+  if (activeLayerIdx>=layers.length) activeLayerIdx=layers.length-1;
+  clearHistory();
+}
+
+// ── Undo / Redo ───────────────────────────────────────
+function clearHistory() { undoStack = []; redoStack = []; updateUndoRedoUI(); }
+function snapshotLayer(idx) {
+  if (idx<0||idx>=layers.length) return null;
+  const src = layers[idx].data;
+  return new ImageData(new Uint8ClampedArray(src.data), iconSize, iconSize);
+}
+function pushUndo() {
+  const snap = snapshotLayer(activeLayerIdx);
+  undoStack.push({ layerIdx: activeLayerIdx, data: snap });
+  if (undoStack.length > maxUndo) undoStack.shift();
+  redoStack = [];
+  updateUndoRedoUI();
+}
+function undo() {
+  if (!undoStack.length) return;
+  // If floating selection is active (lifted from canvas), undo restores the original
+  // so the floating preview is now stale — cancel it without restoring (undo already did)
+  if (floatingSel && floatingSel.origX !== undefined) {
+    floatingSel = null; _selDrag = null; statusMsg.textContent = '';
+  }
+  const entry = undoStack.pop();
+  if (entry.layerIdx<0||entry.layerIdx>=layers.length) { clearHistory(); renderAll(); return; }
+  redoStack.push({ layerIdx: entry.layerIdx, data: snapshotLayer(entry.layerIdx) });
+  layers[entry.layerIdx].data = entry.data;
+  activeLayerIdx = entry.layerIdx;
+  updateUndoRedoUI();
+  renderAll();
+}
+function redo() {
+  if (!redoStack.length) return;
+  const entry = redoStack.pop();
+  if (entry.layerIdx<0||entry.layerIdx>=layers.length) { clearHistory(); renderAll(); return; }
+  undoStack.push({ layerIdx: entry.layerIdx, data: snapshotLayer(entry.layerIdx) });
+  layers[entry.layerIdx].data = entry.data;
+  activeLayerIdx = entry.layerIdx;
+  updateUndoRedoUI();
+  renderAll();
+}
+function updateUndoRedoUI() {
+  $('#undo-btn').style.opacity = undoStack.length ? '1' : '0.35';
+  $('#redo-btn').style.opacity = redoStack.length ? '1' : '0.35';
+}
+$('#undo-btn').addEventListener('click', undo);
+$('#redo-btn').addEventListener('click', redo);
+
+// ── Drawing on a layer ────────────────────────────────
+function getPixel(layerData, x, y) {
+  if (x<0||y<0||x>=iconSize||y>=iconSize) return null;
+  const i = (y*iconSize+x)*4;
+  return [layerData.data[i],layerData.data[i+1],layerData.data[i+2],layerData.data[i+3]];
+}
+function setPixel(layerData, x, y, rgba) {
+  if (x<0||y<0||x>=iconSize||y>=iconSize) return;
+  const i = (y*iconSize+x)*4;
+  layerData.data[i]=rgba[0];layerData.data[i+1]=rgba[1];
+  layerData.data[i+2]=rgba[2];layerData.data[i+3]=rgba[3];
+}
+function drawPencil(x, y) {
+  setPixel(layers[activeLayerIdx].data, x, y, fgColor);
+}
+function drawEraser(x, y) {
+  setPixel(layers[activeLayerIdx].data, x, y, [0,0,0,0]);
+}
+function floodFill(sx, sy, targetRgba, fillRgba) {
+  const data = layers[activeLayerIdx].data;
+  if (rgbaMatch(targetRgba, fillRgba)) return;
+  const w=iconSize, h=iconSize, d=data.data;
+  // Scanline flood fill
+  const stack = [sx,sy];
+  while (stack.length) {
+    const y = stack.pop(), x = stack.pop();
+    let lx = x;
+    // Go left
+    while (lx>=0) {
+      const i=(y*w+lx)*4;
+      if (!(d[i]===targetRgba[0]&&d[i+1]===targetRgba[1]&&d[i+2]===targetRgba[2]&&d[i+3]===targetRgba[3])) break;
+      lx--;
+    }
+    lx++;
+    // Scan right and fill
+    let spanAbove=false, spanBelow=false;
+    for (let px=lx; px<w; px++) {
+      const i=(y*w+px)*4;
+      if (!(d[i]===targetRgba[0]&&d[i+1]===targetRgba[1]&&d[i+2]===targetRgba[2]&&d[i+3]===targetRgba[3])) break;
+      d[i]=fillRgba[0];d[i+1]=fillRgba[1];d[i+2]=fillRgba[2];d[i+3]=fillRgba[3];
+      // Check above
+      if (y>0) {
+        const ai=( (y-1)*w+px)*4;
+        const matchA = d[ai]===targetRgba[0]&&d[ai+1]===targetRgba[1]&&d[ai+2]===targetRgba[2]&&d[ai+3]===targetRgba[3];
+        if (matchA && !spanAbove) { stack.push(px,y-1); spanAbove=true; }
+        else if (!matchA) spanAbove=false;
+      }
+      // Check below
+      if (y<h-1) {
+        const bi=( (y+1)*w+px)*4;
+        const matchB = d[bi]===targetRgba[0]&&d[bi+1]===targetRgba[1]&&d[bi+2]===targetRgba[2]&&d[bi+3]===targetRgba[3];
+        if (matchB && !spanBelow) { stack.push(px,y+1); spanBelow=true; }
+        else if (!matchB) spanBelow=false;
+      }
+    }
+  }
+}
+function drawLine(x0, y0, x1, y1, rgba) {
+  const data = layers[activeLayerIdx].data;
+  let dx=Math.abs(x1-x0), dy=-Math.abs(y1-y0);
+  let sx=x0<x1?1:-1, sy=y0<y1?1:-1, err=dx+dy;
+  while(true){
+    setPixel(data,x0,y0,rgba);
+    if(x0===x1&&y0===y1)break;
+    const e2=2*err;
+    if(e2>=dy){err+=dy;x0+=sx}
+    if(e2<=dx){err+=dx;y0+=sy}
+  }
+}
+
+// ── Render ─────────────────────────────────────────────
+function compositeLayers() {
+  // Returns an ImageData of all visible layers composited
+  const result = new ImageData(iconSize, iconSize);
+  const rd = result.data;
+  for (let i=0;i<rd.length;i+=4) rd[i+3]=0; // transparent
+  for (const layer of layers) {
+    if (!layer.visible) continue;
+    const sd = layer.data.data;
+    for (let i=0;i<sd.length;i+=4) {
+      const sa = sd[i+3]/255;
+      if (sa===0) continue;
+      const ra = rd[i+3]/255;
+      if (ra===0 || sa>=1) {
+        rd[i]=sd[i];rd[i+1]=sd[i+1];rd[i+2]=sd[i+2];rd[i+3]=sd[i+3];
+      } else {
+        const outA = sa + ra*(1-sa);
+        rd[i]   = Math.round((sd[i]*sa + rd[i]  *ra*(1-sa))/outA);
+        rd[i+1] = Math.round((sd[i+1]*sa + rd[i+1]*ra*(1-sa))/outA);
+        rd[i+2] = Math.round((sd[i+2]*sa + rd[i+2]*ra*(1-sa))/outA);
+        rd[i+3] = Math.round(outA*255);
+      }
+    }
+  }
+  return result;
+}
+function renderAll() {
+  const composite = compositeLayers();
+  const displaySize = iconSize * zoom;
+
+  // Main canvas
+  mainCanvas.width = displaySize;
+  mainCanvas.height = displaySize;
+  mainCanvas.style.width = displaySize+'px';
+  mainCanvas.style.height = displaySize+'px';
+  mainCtx.imageSmoothingEnabled = false;
+  // Draw composite scaled — reuse cached scratch canvas
+  if (!_tempCanvas || _tempCanvas.width !== iconSize) {
+    _tempCanvas = document.createElement('canvas');
+    _tempCanvas.width = iconSize;
+    _tempCanvas.height = iconSize;
+  }
+  _tempCanvas.getContext('2d').putImageData(composite, 0, 0);
+  mainCtx.clearRect(0,0,displaySize,displaySize);
+  mainCtx.drawImage(_tempCanvas, 0, 0, displaySize, displaySize);
+
+  // Overlay (same size, for grid + line preview)
+  overlayCanvas.width = displaySize;
+  overlayCanvas.height = displaySize;
+  overlayCanvas.style.width = displaySize+'px';
+  overlayCanvas.style.height = displaySize+'px';
+  overlayCtx.clearRect(0,0,displaySize,displaySize);
+
+  // Grid
+  if (showGrid && zoom>=4) {
+    overlayCtx.strokeStyle = gridColor;
+    overlayCtx.lineWidth = 0.5;
+    overlayCtx.beginPath();
+    for (let i=1;i<iconSize;i++) {
+      overlayCtx.moveTo(i*zoom+0.5, 0);
+      overlayCtx.lineTo(i*zoom+0.5, displaySize);
+      overlayCtx.moveTo(0, i*zoom+0.5);
+      overlayCtx.lineTo(displaySize, i*zoom+0.5);
+    }
+    overlayCtx.stroke();
+    // Border
+    overlayCtx.strokeStyle = zoom<8 ? 'rgba(128,128,128,0.5)' : 'rgba(128,128,128,0.3)';
+    overlayCtx.lineWidth = 1;
+    overlayCtx.strokeRect(0.5,0.5,displaySize-1,displaySize-1);
+  }
+
+  // Line preview
+  if (linePreview) {
+    const {x0,y0,x1,y1} = linePreview;
+    overlayCtx.strokeStyle = rgbaStr(fgColor);
+    overlayCtx.lineWidth = 1;
+    overlayCtx.beginPath();
+    overlayCtx.moveTo(x0*zoom+zoom/2, y0*zoom+zoom/2);
+    overlayCtx.lineTo(x1*zoom+zoom/2, y1*zoom+zoom/2);
+    overlayCtx.stroke();
+    // Endpoints
+    overlayCtx.fillStyle = rgbaStr(fgColor);
+    overlayCtx.fillRect(x0*zoom, y0*zoom, zoom, zoom);
+    overlayCtx.fillRect(x1*zoom, y1*zoom, zoom, zoom);
+  }
+
+  // Text preview (floating before final commit)
+  if (textPreview) {
+    const { x, y, scale, srcCanvas, tw, th } = textPreview;
+    const sw = Math.round(tw * scale);
+    const sh = Math.round(th * scale);
+    overlayCtx.imageSmoothingEnabled = false;
+    overlayCtx.drawImage(srcCanvas, x*zoom, y*zoom, sw*zoom, sh*zoom);
+    // Dashed border around preview
+    overlayCtx.strokeStyle = 'rgba(128,160,255,0.9)';
+    overlayCtx.lineWidth = 1;
+    overlayCtx.setLineDash([4, 2]);
+    overlayCtx.strokeRect(x*zoom-1, y*zoom-1, sw*zoom+2, sh*zoom+2);
+    overlayCtx.setLineDash([]);
+    // Corner resize handles
+    const hs = 6;
+    overlayCtx.fillStyle = '#fff';
+    overlayCtx.strokeStyle = 'rgba(128,160,255,0.9)';
+    overlayCtx.lineWidth = 1;
+    const corners = [
+      [x, y], [x+sw, y], [x, y+sh], [x+sw, y+sh],
+      [x+sw/2, y], [x, y+sh/2], [x+sw, y+sh/2], [x+sw/2, y+sh]
+    ];
+    for (const [cx, cy] of corners) {
+      overlayCtx.fillRect(cx*zoom-hs/2, cy*zoom-hs/2, hs, hs);
+      overlayCtx.strokeRect(cx*zoom-hs/2, cy*zoom-hs/2, hs, hs);
+    }
+  }
+
+  // Selection marquee overlay (fixed rect, marching ants)
+  if (selectRect) {
+    drawSelectionBox(selectRect);
+  }
+
+  // Floating selection overlay (paste preview)
+  if (floatingSel) {
+    const fs = floatingSel;
+    // Draw the floating pixels — reuse cached scratch canvas
+    if (!_fsCanvas || _fsCanvas.width !== fs.w || _fsCanvas.height !== fs.h) {
+      _fsCanvas = document.createElement('canvas');
+      _fsCanvas.width = fs.w;
+      _fsCanvas.height = fs.h;
+    }
+    _fsCanvas.getContext('2d').putImageData(fs.data, 0, 0);
+    overlayCtx.imageSmoothingEnabled = false;
+    overlayCtx.drawImage(_fsCanvas, fs.x * zoom, fs.y * zoom, fs.w * zoom, fs.h * zoom);
+    // Border
+    overlayCtx.strokeStyle = 'rgba(128,255,160,0.9)';
+    overlayCtx.lineWidth = 1;
+    overlayCtx.setLineDash([2, 2]);
+    overlayCtx.strokeRect(fs.x * zoom - 1, fs.y * zoom - 1, fs.w * zoom + 2, fs.h * zoom + 2);
+    overlayCtx.setLineDash([]);
+  }
+
+  // Right-panel preview
+  const previewSize = Math.min(120, iconSize*4);
+  previewCanvas.width = previewSize;
+  previewCanvas.height = previewSize;
+  previewCanvas.style.width = previewSize+'px';
+  previewCanvas.style.height = previewSize+'px';
+  previewCtx.imageSmoothingEnabled = false;
+  previewCtx.clearRect(0,0,previewSize,previewSize);
+  previewCtx.drawImage(_tempCanvas, 0, 0, previewSize, previewSize);
+
+  // Cursor overlay on the overlay canvas (active pixel highlight for simplicity - done via CSS outline on canvas-stack)
+
+  updateStatusSize();
+}
+
+// ── Canvas coordinate helpers ─────────────────────────
+function canvasToPixel(cx, cy) {
+  const rect = mainCanvas.getBoundingClientRect();
+  const px = Math.floor((cx - rect.left) / zoom);
+  const py = Math.floor((cy - rect.top) / zoom);
+  return { x: px, y: py, valid: px>=0&&py>=0&&px<iconSize&&py<iconSize };
+}
+
+// ── Tool actions ──────────────────────────────────────
+function toolDown(px, py, e) {
+  if (px<0||py<0||px>=iconSize||py>=iconSize) return;
+  isDrawing = true;
+  drawStartX = px; drawStartY = py;
+
+  if (activeTool === 'eyedropper') {
+    // Pick from composited result, not just active layer
+    const composite = compositeLayers();
+    const i = (py*iconSize+px)*4;
+    const pxData = [composite.data[i],composite.data[i+1],composite.data[i+2],composite.data[i+3]];
+    if (pxData[3]>0) {
+      fgColor = pxData;
+      updateColorUI();
+    }
+    isDrawing = false;
+    return;
+  }
+
+  if (activeTool === 'text') {
+    showTextInput(px, py);
+    isDrawing = false;
+    return;
+  }
+
+  pushUndo();
+
+  if (activeTool === 'pencil') {
+    drawPencil(px, py);
+  } else if (activeTool === 'eraser') {
+    drawEraser(px, py);
+  } else if (activeTool === 'fill') {
+    const target = getPixel(layers[activeLayerIdx].data, px, py);
+    if (target && !rgbaMatch(target, fgColor)) {
+      floodFill(px, py, target, fgColor);
+    }
+    isDrawing = false;
+  } else if (activeTool === 'line') {
+    linePreview = { x0: px, y0: py, x1: px, y1: py };
+  }
+  renderAll();
+}
+function toolMove(px, py, e) {
+  if (!isDrawing) return;
+  if (activeTool === 'pencil') {
+    drawPencil(px, py);
+  } else if (activeTool === 'eraser') {
+    drawEraser(px, py);
+  } else if (activeTool === 'line') {
+    linePreview = { x0: drawStartX, y0: drawStartY, x1: px, y1: py };
+  }
+  // Other tools (fill, eyedropper) don't have drag behavior
+  renderAll();
+  updateStatusPos(px, py);
+}
+function toolUp(px, py, e) {
+  if (!isDrawing) return;
+  if (activeTool === 'line' && linePreview) {
+    drawLine(linePreview.x0, linePreview.y0, linePreview.x1, linePreview.y1, fgColor);
+    linePreview = null;
+  }
+  isDrawing = false;
+  renderAll();
+}
+
+// ── Resize all layers ─────────────────────────────────
+function resizeLayers(newSize) {
+  if (newSize === iconSize) return;
+  cancelTextPreview(); hideTextInput();
+  cancelFloatingSel(); selectRect = null; selClipboard = null; _selDrag = null;
+  const oldSize = iconSize;
+  const newLayers = layers.map(layer => {
+    const newData = new ImageData(newSize, newSize);
+    // Copy overlapping region
+    const copyW = Math.min(oldSize, newSize);
+    const copyH = Math.min(oldSize, newSize);
+    for (let y=0; y<copyH; y++) {
+      for (let x=0; x<copyW; x++) {
+        const oldI = (y*oldSize+x)*4;
+        const newI = (y*newSize+x)*4;
+        newData.data[newI]=layer.data.data[oldI];
+        newData.data[newI+1]=layer.data.data[oldI+1];
+        newData.data[newI+2]=layer.data.data[oldI+2];
+        newData.data[newI+3]=layer.data.data[oldI+3];
+      }
+    }
+    return { ...layer, data: newData };
+  });
+  iconSize = newSize;
+  layers = newLayers;
+  undoStack = []; redoStack = [];
+  updateUndoRedoUI();
+  updateSizeSelect();
+  renderAll();
+}
+
+// ── UI Updates ────────────────────────────────────────
+function updateColorUI() {
+  const hex = rgbaHex(fgColor);
+  $('#custom-color').value = hex.slice(0,7);
+  $('#alpha-slider').value = fgColor[3];
+  $('#alpha-val').textContent = fgColor[3];
+  $('#cur-color-swatch').style.background = rgbaStr(fgColor);
+  $('#cur-color-text').textContent = hex;
+  // Update palette active
+  $$('#palette .swatch').forEach(s=>{
+    const c = s.dataset.color;
+    s.classList.toggle('active', c===hex.slice(0,7) && fgColor[3]===255);
+  });
+}
+function updateStatusPos(x, y) {
+  if (x!==undefined) statusPos.textContent = `X: ${x}, Y: ${y}`;
+}
+function updateStatusSize() {
+  statusSize.textContent = `尺寸: ${iconSize}×${iconSize}`;
+}
+function updateSizeSelect() {
+  $('#size-select').value = String(iconSize);
+}
+function updateZoomLabel() {
+  zoomLabel.textContent = Math.round(zoom*100)+'%';
+}
+function updateAllUI() {
+  updateColorUI();
+  updateZoomLabel();
+  updateStatusSize();
+  updateUndoRedoUI();
+  updateLayerListUI();
+}
+
+// ── Layer list UI ─────────────────────────────────────
+function updateLayerListUI() {
+  const list = $('#layers-list');
+  list.innerHTML = layers.map((l,i)=>{
+    const vis = l.visible ? '👁' : '👁‍🗨';
+    const visCls = l.visible ? '' : 'hidden';
+    const activeCls = i===activeLayerIdx ? ' active' : '';
+    return `<div class="layer-row${activeCls}" data-idx="${i}">
+      <span class="vis-toggle ${visCls}" data-idx="${i}" data-action="vis">${vis}</span>
+      <span class="layer-name">${escHtml(l.name)}</span>
+      <span class="layer-actions">
+        <button data-idx="${i}" data-action="dup" title="复制">⧉</button>
+        <button data-idx="${i}" data-action="merge" title="向下合并" ${i===0?'disabled':''}>↓</button>
+        <button data-idx="${i}" data-action="del" title="删除" ${layers.length<=1?'disabled':''}>✕</button>
+      </span>
+    </div>`;
+  }).join('');
+}
+function escHtml(s) { const d=document.createElement('div');d.textContent=s;return d.innerHTML; }
+function handleLayerClick(e) {
+  const btn = e.target.closest('button');
+  const row = e.target.closest('.layer-row');
+  const visToggle = e.target.closest('.vis-toggle');
+  let idx;
+  if (btn) {
+    idx = parseInt(btn.dataset.idx);
+    const action = btn.dataset.action;
+    if (action==='dup') { duplicateLayer(idx); renderAll(); updateLayerListUI(); }
+    else if (action==='merge') { mergeDown(idx); renderAll(); updateLayerListUI(); }
+    else if (action==='del') { if(layers.length>1){deleteLayer(idx); renderAll(); updateLayerListUI();} }
+    return;
+  }
+  if (visToggle) {
+    idx = parseInt(visToggle.dataset.idx);
+    layers[idx].visible = !layers[idx].visible;
+    renderAll(); updateLayerListUI();
+    return;
+  }
+  if (row) {
+    idx = parseInt(row.dataset.idx);
+    activeLayerIdx = idx;
+    updateLayerListUI();
+  }
+}
+$('#layers-list').addEventListener('click', handleLayerClick);
+
+// Layer action buttons
+$('#layer-add').addEventListener('click', ()=>{
+  addLayer();
+  renderAll(); updateLayerListUI();
+});
+$('#layer-dup').addEventListener('click', ()=>{
+  duplicateLayer(activeLayerIdx);
+  renderAll(); updateLayerListUI();
+});
+$('#layer-merge').addEventListener('click', ()=>{
+  if (activeLayerIdx>0) { mergeDown(activeLayerIdx); renderAll(); updateLayerListUI(); }
+});
+$('#layer-del').addEventListener('click', ()=>{
+  if (layers.length>1) { deleteLayer(activeLayerIdx); renderAll(); updateLayerListUI(); }
+});
+$('#layer-up').addEventListener('click', ()=>{
+  if (activeLayerIdx<layers.length-1) {
+    [layers[activeLayerIdx],layers[activeLayerIdx+1]]=[layers[activeLayerIdx+1],layers[activeLayerIdx]];
+    activeLayerIdx++;
+    clearHistory();
+    renderAll(); updateLayerListUI();
+  }
+});
+$('#layer-down').addEventListener('click', ()=>{
+  if (activeLayerIdx>0) {
+    [layers[activeLayerIdx],layers[activeLayerIdx-1]]=[layers[activeLayerIdx-1],layers[activeLayerIdx]];
+    activeLayerIdx--;
+    clearHistory();
+    renderAll(); updateLayerListUI();
+  }
+});
+
+// ── Canvas mouse/touch events ────────────────────────
+function getEventPos(e) {
+  const rect = mainCanvas.getBoundingClientRect();
+  let cx, cy;
+  if (e.touches) {
+    if (e.touches.length===0) return null;
+    cx = e.touches[0].clientX; cy = e.touches[0].clientY;
+  } else {
+    cx = e.clientX; cy = e.clientY;
+  }
+  const px = Math.floor((cx - rect.left) / zoom);
+  const py = Math.floor((cy - rect.top) / zoom);
+  return { px, py, valid: px>=0&&py>=0&&px<iconSize&&py<iconSize, clientX:cx, clientY:cy };
+}
+function onPointerDown(e) {
+  const pos = getEventPos(e);
+  if (!pos) return;
+
+  // ── Floating selection mode (paste) ───────────────
+  if (floatingSel) {
+    e.preventDefault();
+    const fs = floatingSel;
+    const inside = pos.px >= fs.x && pos.py >= fs.y && pos.px < fs.x + fs.w && pos.py < fs.y + fs.h;
+    if (inside) {
+      _selDrag = { sx: pos.px, sy: pos.py, ox: fs.x, oy: fs.y };
+      mainCanvas.setPointerCapture(e.pointerId);
+      return;
+    }
+    // Click outside → commit
+    commitFloatingSel();
+    return;
+  }
+
+  // ── Text preview mode: drag/resize/finalize ─────
+  if (textPreview) {
+    e.preventDefault();
+    if (!pos.valid) { finalizeTextPreview(); return; }
+    const tp = textPreview;
+    const sw = Math.round(tp.tw * tp.scale);
+    const sh = Math.round(tp.th * tp.scale);
+    const inside = pos.px >= tp.x && pos.py >= tp.y && pos.px < tp.x + sw && pos.py < tp.y + sh;
+    // Corner/edge handle hit test
+    const hs = 6 / zoom; // handle size in pixel coords
+    const corners = [
+      {cx:tp.x,       cy:tp.y,        m:'resizeNW'},
+      {cx:tp.x+sw,    cy:tp.y,        m:'resizeNE'},
+      {cx:tp.x,       cy:tp.y+sh,     m:'resizeSW'},
+      {cx:tp.x+sw,    cy:tp.y+sh,     m:'resizeSE'},
+      {cx:tp.x+sw/2,  cy:tp.y,        m:'resizeN'},
+      {cx:tp.x+sw/2,  cy:tp.y+sh,     m:'resizeS'},
+      {cx:tp.x,       cy:tp.y+sh/2,   m:'resizeW'},
+      {cx:tp.x+sw,    cy:tp.y+sh/2,   m:'resizeE'},
+    ];
+    let onHandle = null;
+    for (const h of corners) {
+      if (Math.abs(pos.px - h.cx) < hs && Math.abs(pos.py - h.cy) < hs) {
+        onHandle = h; break;
+      }
+    }
+    if (onHandle) {
+      _previewDrag = { mode: onHandle.m, sx: pos.px, sy: pos.py, ox: tp.x, oy: tp.y, oscale: tp.scale, osw: sw, osh: sh };
+      mainCanvas.setPointerCapture(e.pointerId);
+      return;
+    }
+    if (inside) {
+      _previewDrag = { mode: 'move', sx: pos.px, sy: pos.py, ox: tp.x, oy: tp.y };
+      mainCanvas.setPointerCapture(e.pointerId);
+      return;
+    }
+    // Click outside → finalize
+    finalizeTextPreview();
+    return;
+  }
+
+  // ── Select tool ─────────────────────────────
+  if (activeTool === 'select' && pos.valid) {
+    e.preventDefault();
+    // If a finalized selection exists and click is inside it → lift to floating
+    if (selectRect && selectRect.x0 === undefined) {
+      const r = selectRect;
+      if (pos.px >= r.x && pos.py >= r.y && pos.px < r.x + r.w && pos.py < r.y + r.h) {
+        liftSelection();
+        return;
+      }
+      // Click outside finalized selection → deselect
+      selectRect = null;
+      statusMsg.textContent = '';
+      renderAll();
+      return;
+    }
+    // No finalized selection → start marquee drag
+    mainCanvas.setPointerCapture(e.pointerId);
+    selectRect = { x0: pos.px, y0: pos.py, x1: pos.px, y1: pos.py };
+    floatingSel = null;
+    renderAll();
+    return;
+  }
+
+  // ── Normal drawing ────────────────────────────
+  if (!pos.valid) return;
+  e.preventDefault();
+  mainCanvas.setPointerCapture(e.pointerId);
+  // Start new selection implicitly clears old finalized selectRect
+  toolDown(pos.px, pos.py, e);
+}
+function onPointerMove(e) {
+  const pos = getEventPos(e);
+  if (!pos) return;
+
+  // ── Floating selection move ───────────────────
+  if (_selDrag && floatingSel) {
+    const dx = pos.px - _selDrag.sx;
+    const dy = pos.py - _selDrag.sy;
+    floatingSel.x = Math.max(0, Math.min(iconSize - floatingSel.w, _selDrag.ox + dx));
+    floatingSel.y = Math.max(0, Math.min(iconSize - floatingSel.h, _selDrag.oy + dy));
+    updateStatusPos(pos.px, pos.py);
+    renderAll();
+    return;
+  }
+
+  // ── Marquee drag ─────────────────────────────
+  if (selectRect && selectRect.x0 !== undefined && activeTool === 'select') {
+    selectRect.x1 = Math.max(0, Math.min(iconSize - 1, pos.px));
+    selectRect.y1 = Math.max(0, Math.min(iconSize - 1, pos.py));
+    updateStatusPos(pos.px, pos.py);
+    renderAll();
+    return;
+  }
+
+  // ── Text preview drag ─────────────────────────
+  if (_previewDrag && textPreview) {
+    const d = _previewDrag;
+    const dx = pos.px - d.sx;
+    const dy = pos.py - d.sy;
+    if (d.mode === 'move') {
+      const sw = Math.round(textPreview.tw * textPreview.scale);
+      const sh = Math.round(textPreview.th * textPreview.scale);
+      textPreview.x = Math.max(-sw/2, Math.min(iconSize - sw/2, d.ox + dx));
+      textPreview.y = Math.max(-sh/2, Math.min(iconSize - sh/2, d.oy + dy));
+    } else {
+      // Resize — uniform scale anchored at the opposite side
+      const tw = textPreview.tw, th = textPreview.th;
+      let newScale = d.oscale;
+      const m = d.mode;
+      // East-side handles: scale from left edge
+      if (m === 'resizeSE' || m === 'resizeNE' || m === 'resizeE') {
+        newScale = Math.max(0.2, (d.osw + dx) / tw);
+      }
+      // West-side handles: scale from right edge
+      else if (m === 'resizeSW' || m === 'resizeNW' || m === 'resizeW') {
+        newScale = Math.max(0.2, (d.osw - dx) / tw);
+      }
+      // South handle: scale from top edge
+      else if (m === 'resizeS') {
+        newScale = Math.max(0.2, (d.osh + dy) / th);
+      }
+      // North handle: scale from bottom edge
+      else if (m === 'resizeN') {
+        newScale = Math.max(0.2, (d.osh - dy) / th);
+      }
+      // Adjust position for west/north handles
+      const oldW = d.osw, newW = Math.round(tw * newScale);
+      if (m === 'resizeSW' || m === 'resizeNW' || m === 'resizeW') {
+        textPreview.x = d.ox + (oldW - newW);
+      }
+      const oldH = d.osh, newH = Math.round(th * newScale);
+      if (m === 'resizeNW' || m === 'resizeNE' || m === 'resizeN') {
+        textPreview.y = d.oy + (oldH - newH);
+      }
+      textPreview.scale = newScale;
+    }
+    updateStatusPos(pos.px, pos.py);
+    renderAll();
+    return;
+  }
+
+  updateStatusPos(pos.px, pos.py);
+  if (!isDrawing) return;
+  // If pointer moved outside valid area during line, still track
+  if (activeTool==='line' && isDrawing) {
+    const px = Math.max(0, Math.min(iconSize-1, pos.px));
+    const py = Math.max(0, Math.min(iconSize-1, pos.py));
+    toolMove(px, py, e);
+    return;
+  }
+  if (!pos.valid) return;
+  toolMove(pos.px, pos.py, e);
+}
+function onPointerUp(e) {
+  // End floating selection drag
+  if (_selDrag) {
+    _selDrag = null;
+    renderAll();
+    return;
+  }
+  // End marquee drag → normalize selectRect (only for in-progress marquee with x0/x1)
+  if (selectRect && selectRect.x0 !== undefined && activeTool === 'select') {
+    const r = selectRect;
+    const x = Math.min(r.x0, r.x1);
+    const y = Math.min(r.y0, r.y1);
+    const w = Math.abs(r.x1 - r.x0) + 1;
+    const h = Math.abs(r.y1 - r.y0) + 1;
+    if (w <= 1 && h <= 1) {
+      // Single click → clear selection
+      selectRect = null;
+    } else {
+      selectRect = { x, y, w, h };
+      statusMsg.textContent = `选框 ${w}×${h} | 点击内部移动 | Ctrl+C/X/V | Del 清除`;
+    }
+    renderAll();
+    return;
+  }
+  // End text preview drag
+  if (_previewDrag) {
+    _previewDrag = null;
+    renderAll();
+    return;
+  }
+  const pos = getEventPos(e);
+  if (!isDrawing) return;
+  const px = pos ? Math.max(0, Math.min(iconSize-1, pos.px)) : drawStartX;
+  const py = pos ? Math.max(0, Math.min(iconSize-1, pos.py)) : drawStartY;
+  toolUp(px, py, e);
+}
+// Prevent context menu on canvas
+mainCanvas.addEventListener('contextmenu', e=>e.preventDefault());
+mainCanvas.addEventListener('pointerdown', onPointerDown);
+mainCanvas.addEventListener('pointermove', onPointerMove);
+mainCanvas.addEventListener('pointerup', onPointerUp);
+mainCanvas.addEventListener('pointerleave', onPointerUp);
+// Touch scrolling prevented via CSS touch-action:none on :root
+
+// ── Keyboard shortcuts ───────────────────────────────
+document.addEventListener('keydown', e=>{
+  const ctrl = e.ctrlKey || e.metaKey;
+  const key = e.key.toLowerCase();
+  const inInput = !!e.target.closest('input,select,textarea');
+  if (ctrl && key==='z') { if (!inInput) e.preventDefault(); if(e.shiftKey) redo(); else undo(); return; }
+  if (ctrl && key==='y') { if (!inInput) e.preventDefault(); redo(); return; }
+  if (ctrl && key==='s') { if (!inInput) e.preventDefault(); exportPNG(); return; }
+  if (ctrl && key==='g') { if (!inInput) e.preventDefault(); toggleGrid(); return; }
+  // ── Selection clipboard shortcuts ──────────
+  if (ctrl && key==='c' && selectRect && !floatingSel && !textPreview) {
+    e.preventDefault(); copySelection(); return;
+  }
+  if (ctrl && key==='x' && selectRect && !floatingSel && !textPreview) {
+    e.preventDefault(); cutSelection(); return;
+  }
+  if (ctrl && key==='v' && selClipboard && !textPreview) {
+    e.preventDefault(); pasteSelection(); return;
+  }
+  // ── Escape / Backspace / Delete / Enter (non-input area) ─────
+  // Backspace/Delete always work on selection regardless of inInput
+  if ((key === 'delete' || key === 'backspace' || key === 'Backspace' || key === 'Delete') && !ctrl) {
+    const realInput = e.target.closest('input,textarea,select,[contenteditable]');
+    if (realInput && realInput !== textInput) return; // genuine typing — don't steal
+    if (floatingSel) {
+      e.preventDefault(); cancelFloatingSel(); return;
+    }
+    if (selectRect && selectRect.x0 === undefined) {
+      e.preventDefault(); clearSelRect(); return;
+    }
+  }
+  if (inInput) return; // below this: only non-input actions
+
+  if (key === 'escape') {
+    e.preventDefault();
+    if (floatingSel || selectRect || textPreview) {
+      cancelFloatingSel();
+      cancelTextPreview();
+      selectRect = null;
+      renderAll();
+      return;
+    }
+  }
+  if (key === 'enter') {
+    if (floatingSel) { e.preventDefault(); commitFloatingSel(); return; }
+    if (textPreview) { e.preventDefault(); finalizeTextPreview(); return; }
+  }
+  // Tool shortcuts (no ctrl)
+  if (!ctrl && !e.target.closest('input,select,textarea')) {
+    switch(key) {
+      case 'b': setTool('pencil'); break;
+      case 'e': setTool('eraser'); break;
+      case 'i': setTool('eyedropper'); break;
+      case 'g': setTool('fill'); break;
+      case 'l': setTool('line'); break;
+      case 't': setTool('text'); break;
+      case 'm': setTool('select'); break;
+      case '+': case '=': zoomIn(); break;
+      case '-': zoomOut(); break;
+      case '0': zoomFit(); break;
+      case '[': {
+        const vsizes = [16,24,32,48,64,96,128,256];
+        const idx = vsizes.indexOf(iconSize);
+        if (idx > 0) {
+          const ns = vsizes[idx-1];
+          $('#size-select').value=String(ns); resizeLayers(ns); zoomFit();
+        }
+        break;
+      }
+      case ']': {
+        const vsizes = [16,24,32,48,64,96,128,256];
+        const idx = vsizes.indexOf(iconSize);
+        if (idx >= 0 && idx < vsizes.length-1) {
+          const ns = vsizes[idx+1];
+          $('#size-select').value=String(ns); resizeLayers(ns); zoomFit();
+        }
+        break;
+      }
+    }
+  }
+});
+
+// ── Tool selection ────────────────────────────────────
+function setTool(tool) {
+  // Guard: if switching away from text, hide input BEFORE blur fires
+  // so commitText sees display:none and returns early
+  if (tool !== 'text' && activeTool === 'text') {
+    hideTextInput();
+    cancelTextPreview();
+  }
+  activeTool = tool;
+  isDrawing = false;  // reset any stale drawing state
+  // If leaving select tool, clear marquee rect (keep floatingSel until committed/cancelled)
+  if (tool !== 'select') selectRect = null;
+  if (floatingSel && tool !== 'select') cancelFloatingSel();
+  const toolBtns = ['#t-pencil','#t-eraser','#t-eyedropper','#t-fill','#t-line','#t-text','#t-select'];
+  toolBtns.forEach(s=>$(s).classList.remove('active'));
+  const btnMap = {pencil:'#t-pencil',eraser:'#t-eraser',eyedropper:'#t-eyedropper',fill:'#t-fill',line:'#t-line',text:'#t-text',select:'#t-select'};
+  const btn = $(btnMap[tool]);
+  if (btn) btn.classList.add('active');
+  const names = {pencil:'铅笔',eraser:'橡皮',eyedropper:'取色器',fill:'填充',line:'直线',text:'文字',select:'框选'};
+  statusTool.textContent = '工具: '+names[tool];
+  mainCanvas.style.cursor = tool === 'text' ? 'text' : 'crosshair';
+}
+// Tool button bindings
+$('#t-pencil').addEventListener('click',()=>setTool('pencil'));
+$('#t-eraser').addEventListener('click',()=>setTool('eraser'));
+$('#t-eyedropper').addEventListener('click',()=>setTool('eyedropper'));
+$('#t-fill').addEventListener('click',()=>setTool('fill'));
+$('#t-line').addEventListener('click',()=>setTool('line'));
+$('#t-text').addEventListener('click',()=>setTool('text'));
+$('#t-select').addEventListener('click',()=>setTool('select'));
+
+// ── Font size ─────────────────────────────────────────
+fontSelect.addEventListener('change', ()=>{
+  fontSize = parseInt(fontSelect.value);
+});
+fontSize = parseInt(fontSelect.value);
+
+// ── Text input overlay ────────────────────────────────
+textInput.addEventListener('keydown', e=>{
+  if (e.key === 'Enter') { e.preventDefault(); commitText(); }
+  else if (e.key === 'Escape') { hideTextInput(); }
+});
+textInput.addEventListener('blur', ()=>{
+  // Commit synchronously; guard prevents double-fire with Enter
+  commitText();
+});
+
+function showTextInput(x, y) {
+  _textCommitting = false;
+  textCommitPos = {x, y};
+  textPreview = null; // discard any old preview
+  _previewDrag = null;
+  const sx = x * zoom;
+  const sy = y * zoom;
+  textInput.style.display = 'block';
+  textInput.style.left = sx + 'px';
+  textInput.style.top = sy + 'px';
+  textInput.style.fontSize = Math.max(10, zoom) + 'px';
+  textInput.value = '';
+  textInput.focus();
+}
+
+function hideTextInput() {
+  textInput.style.display = 'none';
+  textInput.value = '';
+  textInput.blur();
+  textCommitPos = null;
+  // _textCommitting left alone — caller (commitText) owns its lifecycle
+}
+
+// After Enter/blur — render to offscreen canvas and enter floating preview mode
+function commitText() {
+  if (_textCommitting) return;
+  if (textInput.style.display === 'none') return;
+  _textCommitting = true;
+  const text = textInput.value.trim();
+  const pos = textCommitPos;
+  hideTextInput();
+  if (!text || !pos) { _textCommitting = false; return; }
+
+  // Render text at chosen font size to offscreen canvas
+  const offCanvas = document.createElement('canvas');
+  const offCtx = offCanvas.getContext('2d');
+  offCtx.font = fontSize + 'px monospace';
+  offCtx.textBaseline = 'top';
+  const metrics = offCtx.measureText(text);
+  const tw = Math.ceil(metrics.width);
+  const th = Math.ceil(fontSize * 1.2);
+  offCanvas.width = tw;
+  offCanvas.height = th;
+  offCtx.font = fontSize + 'px monospace';
+  offCtx.textBaseline = 'top';
+  offCtx.fillStyle = rgbaStr([fgColor[0], fgColor[1], fgColor[2], 255]);
+  offCtx.fillText(text, 0, 0);
+
+  // Store as floating preview — user can now reposition/resize
+  textPreview = {
+    text,
+    srcCanvas: offCanvas,
+    x: pos.x,
+    y: pos.y,
+    scale: 1,
+    tw,
+    th
+  };
+  _textCommitting = false;
+  statusMsg.textContent = '拖拽移动 | 拖拽角手柄缩放 | 点击外部确认 | Esc 取消';
+  renderAll();
+}
+
+function cancelTextPreview(skipRender) {
+  textPreview = null;
+  _previewDrag = null;
+  statusMsg.textContent = '';
+  if (!skipRender) renderAll();
+}
+
+function finalizeTextPreview() {
+  if (!textPreview) return;
+  pushUndo();
+
+  const { srcCanvas, x, y, scale, tw, th } = textPreview;
+  const scaledW = Math.round(tw * scale);
+  const scaledH = Math.round(th * scale);
+  // Scale render
+  const sCanvas = document.createElement('canvas');
+  sCanvas.width = scaledW;
+  sCanvas.height = scaledH;
+  const sCtx = sCanvas.getContext('2d');
+  sCtx.imageSmoothingEnabled = false;
+  sCtx.drawImage(srcCanvas, 0, 0, scaledW, scaledH);
+  const srcData = sCtx.getImageData(0, 0, scaledW, scaledH);
+
+  const layerData = layers[activeLayerIdx].data;
+  for (let py = 0; py < scaledH; py++) {
+    for (let px = 0; px < scaledW; px++) {
+      const si = (py * scaledW + px) * 4;
+      const alpha = srcData.data[si + 3];
+      if (alpha === 0) continue;
+      const tx = x + px;
+      const ty = y + py;
+      if (tx < 0 || ty < 0 || tx >= iconSize || ty >= iconSize) continue;
+      const a = Math.round(alpha * fgColor[3] / 255);
+      setPixel(layerData, tx, ty, [srcData.data[si], srcData.data[si + 1], srcData.data[si + 2], a]);
+    }
+  }
+
+  textPreview = null;
+  _previewDrag = null;
+  statusMsg.textContent = '';
+  renderAll();
+}
+
+// ── Selection helpers ─────────────────────────────────
+function drawSelectionBox(r) {
+  // Normalize to {x,y,w,h}
+  let x,y,w,h;
+  if (r.x0 !== undefined) {
+    // Still dragging marquee
+    x = Math.min(r.x0, r.x1);
+    y = Math.min(r.y0, r.y1);
+    w = Math.abs(r.x1 - r.x0) + 1;
+    h = Math.abs(r.y1 - r.y0) + 1;
+  } else {
+    x = r.x; y = r.y; w = r.w; h = r.h;
+  }
+  if (w <= 0 || h <= 0) return;
+  // Alternating black/white dashes visible on any background
+  overlayCtx.setLineDash([3, 3]);
+  overlayCtx.lineWidth = 1.5;
+  overlayCtx.strokeStyle = '#000';
+  overlayCtx.strokeRect(x * zoom, y * zoom, w * zoom, h * zoom);
+  overlayCtx.setLineDash([3, 3]);
+  overlayCtx.lineDashOffset = 3;
+  overlayCtx.strokeStyle = '#fff';
+  overlayCtx.strokeRect(x * zoom, y * zoom, w * zoom, h * zoom);
+  overlayCtx.setLineDash([]);
+  overlayCtx.lineDashOffset = 0;
+}
+
+function captureSelPixels() {
+  if (!selectRect || selectRect.x0 !== undefined) return null;
+  const { x, y, w, h } = selectRect;
+  const layerData = layers[activeLayerIdx].data;
+  const data = new ImageData(w, h);
+  for (let py = 0; py < h; py++) {
+    for (let px = 0; px < w; px++) {
+      const si = ((y + py) * iconSize + (x + px)) * 4;
+      const di = (py * w + px) * 4;
+      data.data[di] = layerData.data[si];
+      data.data[di + 1] = layerData.data[si + 1];
+      data.data[di + 2] = layerData.data[si + 2];
+      data.data[di + 3] = layerData.data[si + 3];
+    }
+  }
+  return data;
+}
+
+function liftSelection() {
+  const data = captureSelPixels();
+  if (!data) return;
+  pushUndo(); // snapshot original before clearing
+  const { x, y, w, h } = selectRect;
+  const layerData = layers[activeLayerIdx].data;
+  for (let py = y; py < y + h; py++) {
+    for (let px = x; px < x + w; px++) {
+      setPixel(layerData, px, py, [0, 0, 0, 0]);
+    }
+  }
+  floatingSel = { x, y, w, h, data, origX: x, origY: y };
+  selectRect = null;
+  statusMsg.textContent = '拖拽移动 | 点击外部确认 | Esc 恢复原位';
+  renderAll();
+}
+
+function copySelection() {
+  const data = captureSelPixels();
+  if (!data) return;
+  const {w, h} = selectRect;
+  selClipboard = { w, h, data };
+  statusMsg.textContent = `已复制 ${w}×${h}`;
+  setTimeout(() => { statusMsg.textContent = `选框 ${w}×${h}`; }, 2000);
+}
+
+function cutSelection() {
+  const data = captureSelPixels();
+  if (!data) return;
+  const {w, h} = selectRect;
+  selClipboard = { w, h, data };
+  clearSelRect();
+  statusMsg.textContent = `已剪切 ${w}×${h}`;
+  setTimeout(() => { statusMsg.textContent = ''; }, 2000);
+}
+
+function clearSelRect() {
+  if (!selectRect || selectRect.x0 !== undefined) return;
+  pushUndo();
+  const { x, y, w, h } = selectRect;
+  const layerData = layers[activeLayerIdx].data;
+  for (let py = y; py < y + h; py++) {
+    for (let px = x; px < x + w; px++) {
+      setPixel(layerData, px, py, [0, 0, 0, 0]);
+    }
+  }
+  renderAll();
+}
+
+function pasteSelection() {
+  if (!selClipboard) return;
+  // Suppress renders in cancel functions, we'll render once at the end
+  cancelFloatingSel(true);
+  cancelTextPreview(true);
+  hideTextInput();
+  // Place at center of current view, or at existing selection position
+  const cx = selectRect && selectRect.x !== undefined ? selectRect.x : Math.floor((iconSize - selClipboard.w) / 2);
+  const cy = selectRect && selectRect.y !== undefined ? selectRect.y : Math.floor((iconSize - selClipboard.h) / 2);
+  floatingSel = {
+    x: Math.max(0, Math.min(iconSize - selClipboard.w, cx)),
+    y: Math.max(0, Math.min(iconSize - selClipboard.h, cy)),
+    w: selClipboard.w,
+    h: selClipboard.h,
+    data: new ImageData(new Uint8ClampedArray(selClipboard.data.data), selClipboard.w, selClipboard.h)
+  };
+  selectRect = null;
+  statusMsg.textContent = '拖拽移动 | 点击外部确认 | Esc 取消';
+  renderAll();
+}
+
+function commitFloatingSel() {
+  if (!floatingSel) return;
+  // For lifted selection, undo was already pushed in liftSelection
+  // For pasted selection, push undo now
+  if (floatingSel.origX === undefined) pushUndo();
+  const { x, y, w, h, data } = floatingSel;
+  const layerData = layers[activeLayerIdx].data;
+  const src = data.data;
+  for (let py = 0; py < h; py++) {
+    for (let px = 0; px < w; px++) {
+      const si = (py * w + px) * 4;
+      const alpha = src[si + 3];
+      if (alpha === 0) continue;
+      const tx = x + px;
+      const ty = y + py;
+      if (tx < 0 || ty < 0 || tx >= iconSize || ty >= iconSize) continue;
+      setPixel(layerData, tx, ty, [src[si], src[si + 1], src[si + 2], src[si + 3]]);
+    }
+  }
+  floatingSel = null;
+  _selDrag = null;
+  statusMsg.textContent = '';
+  renderAll();
+}
+
+function cancelFloatingSel(skipRender) {
+  // If this was a lifted selection (has origX), restore original pixels
+  if (floatingSel && floatingSel.origX !== undefined) {
+    const { w, h, data, origX, origY } = floatingSel;
+    const layerData = layers[activeLayerIdx].data;
+    const src = data.data;
+    for (let py = 0; py < h; py++) {
+      for (let px = 0; px < w; px++) {
+        const si = (py * w + px) * 4;
+        if (src[si + 3] === 0) continue;
+        setPixel(layerData, origX + px, origY + py, [src[si], src[si+1], src[si+2], src[si+3]]);
+      }
+    }
+    // Pop the undo snapshot that liftSelection pushed
+    if (undoStack.length) { const popped = undoStack.pop(); redoStack = []; updateUndoRedoUI(); }
+  }
+  floatingSel = null;
+  _selDrag = null;
+  statusMsg.textContent = '';
+  if (!skipRender) renderAll();
+}
+
+// ── Zoom ──────────────────────────────────────────────
+function zoomIn() { zoom=Math.min(64,zoom*2); updateZoomLabel(); renderAll(); }
+function zoomOut() { zoom=Math.max(1,zoom/2); updateZoomLabel(); renderAll(); }
+function zoomFit() {
+  const wrapRect = canvasWrap.getBoundingClientRect();
+  const maxDim = Math.min(wrapRect.width-40, wrapRect.height-40);
+  zoom = Math.max(1, Math.floor(maxDim/iconSize));
+  updateZoomLabel(); renderAll();
+}
+$('#zoom-in').addEventListener('click', zoomIn);
+$('#zoom-out').addEventListener('click', zoomOut);
+$('#zoom-fit').addEventListener('click', zoomFit);
+canvasWrap.addEventListener('wheel', e=>{
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    if (e.deltaY<0) zoomIn(); else zoomOut();
+  }
+}, {passive:false});
+
+// ── Grid ──────────────────────────────────────────────
+function toggleGrid() { showGrid=!showGrid;$('#grid-toggle').classList.toggle('active',showGrid);renderAll(); }
+$('#grid-toggle').addEventListener('click', toggleGrid);
+
+// ── Theme ─────────────────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const cur = html.getAttribute('data-theme');
+  html.setAttribute('data-theme', cur==='dark'?'light':'dark');
+  gridColor = getComputedStyle(html).getPropertyValue('--grid').trim();
+  renderAll();
+}
+$('#theme-toggle').addEventListener('click', toggleTheme);
+
+// ── Color palette & picker ───────────────────────────
+function buildPalette() {
+  const pal = $('#palette');
+  PRESET_COLORS.forEach(hex=>{
+    const div = document.createElement('div');
+    div.className = 'swatch';
+    div.style.background = hex;
+    div.dataset.color = hex;
+    div.title = hex;
+    div.addEventListener('click', ()=>{
+      fgColor = hexToRgba(hex);
+      updateColorUI();
+    });
+    pal.appendChild(div);
+  });
+}
+buildPalette();
+$('#custom-color').addEventListener('input', ()=>{
+  const hex = $('#custom-color').value;
+  const rgba = hexToRgba(hex);
+  rgba[3] = fgColor[3]; // preserve alpha
+  fgColor = rgba;
+  updateColorUI();
+});
+$('#alpha-slider').addEventListener('input', ()=>{
+  fgColor[3] = parseInt($('#alpha-slider').value);
+  $('#alpha-val').textContent = fgColor[3];
+  updateColorUI();
+});
+
+// ── Size ──────────────────────────────────────────────
+$('#size-select').addEventListener('change', ()=>{
+  const newSize = parseInt($('#size-select').value);
+  if (newSize === iconSize) return;
+  const hasContent = layers.some(l=>{
+    for(let i=3;i<l.data.data.length;i+=4) if(l.data.data[i]>0) return true;
+    return false;
+  });
+  if (hasContent && !confirm(`将尺寸从 ${iconSize}×${iconSize} 调整为 ${newSize}×${newSize}？\n现有内容会被裁剪（保留左上角重叠区域）。`)) {
+    updateSizeSelect();
+    return;
+  }
+  resizeLayers(newSize);
+  zoomFit();
+});
+
+// ── Import / Export ───────────────────────────────────
+function exportPNG() {
+  const composite = compositeLayers();
+  const c = document.createElement('canvas');
+  c.width=iconSize;c.height=iconSize;
+  c.getContext('2d').putImageData(composite,0,0);
+  c.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=`icon-${iconSize}x${iconSize}.png`;a.click();
+    URL.revokeObjectURL(url);
+  },'image/png');
+}
+function exportICO() {
+  const sizes = [16,24,32,48,64,128,256];
+  const composite = compositeLayers();
+  const srcCanvas = document.createElement('canvas');
+  srcCanvas.width=iconSize;srcCanvas.height=iconSize;
+  srcCanvas.getContext('2d').putImageData(composite,0,0);
+
+  let failed = false;
+  let pending = sizes.length;
+  const bufs = new Array(sizes.length);
+  sizes.forEach((s,i)=>{
+    const c = document.createElement('canvas');
+    c.width=s;c.height=s;
+    const ctx=c.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(srcCanvas,0,0,s,s);
+    c.toBlob(blob=>{
+      if (failed) return;
+      blob.arrayBuffer().then(ab=>{
+        if (failed) return;
+        bufs[i]=ab;
+        if(--pending===0) buildICO(bufs);
+      }).catch(e=>{ failed=true; showICOError(e); });
+    },'image/png');
+  });
+
+  function buildICO(bufs){
+    try {
+    const count = bufs.length;
+    const headerSize = 6, entrySize = 16, dirSize = headerSize + count * entrySize;
+    let imageOffset = dirSize;
+    const offsets = [];
+    for(const ab of bufs){ offsets.push(imageOffset); imageOffset += ab.byteLength; }
+    const out = new ArrayBuffer(imageOffset);
+    const dv = new DataView(out);
+    let pos = 0;
+    dv.setUint16(pos, 0, true); pos+=2;
+    dv.setUint16(pos, 1, true); pos+=2;
+    dv.setUint16(pos, count, true); pos+=2;
+    for(let i=0;i<count;i++){
+      const w = sizes[i]>=256 ? 0 : sizes[i];
+      dv.setUint8(pos, w); pos+=1;
+      dv.setUint8(pos, w); pos+=1;
+      dv.setUint8(pos, 0); pos+=1;
+      dv.setUint8(pos, 0); pos+=1;
+      dv.setUint16(pos, 1, true); pos+=2;
+      dv.setUint16(pos, 32, true); pos+=2;
+      dv.setUint32(pos, bufs[i].byteLength, true); pos+=4;
+      dv.setUint32(pos, offsets[i], true); pos+=4;
+    }
+    const u8 = new Uint8Array(out);
+    for(let i=0;i<count;i++) u8.set(new Uint8Array(bufs[i]), offsets[i]);
+    const blob = new Blob([out], {type:'image/x-icon'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=`icon-${iconSize}x${iconSize}.ico`;a.click();
+    URL.revokeObjectURL(url);
+    statusMsg.textContent=`已导出 ICO (含 ${count} 种尺寸)`;
+    setTimeout(()=>statusMsg.textContent='',2500);
+    } catch(e) { showICOError(e); }
+  }
+
+  function showICOError(e){
+    console.error('ICO export failed:', e);
+    statusMsg.textContent='ICO 导出失败';
+    setTimeout(()=>statusMsg.textContent='',3000);
+  }
+}
+function exportSVG() {
+  const composite = compositeLayers();
+  const d=composite.data;
+  let svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${iconSize}" height="${iconSize}" shape-rendering="crispEdges">\n`;
+  // Group by color to minimize rects
+  const rectMap = new Map();
+  for (let y=0;y<iconSize;y++) {
+    for (let x=0;x<iconSize;x++) {
+      const i=(y*iconSize+x)*4;
+      if(d[i+3]===0) continue;
+      const key=`${d[i]},${d[i+1]},${d[i+2]},${d[i+3]}`;
+      if(!rectMap.has(key)) rectMap.set(key,[]);
+      rectMap.get(key).push({x,y});
+    }
+  }
+  for(const [key,pxs] of rectMap){
+    const [r,g,b,a]=key.split(',').map(Number);
+    svg+=`<g fill="rgba(${r},${g},${b},${(a/255).toFixed(2)})">\n`;
+    for(const p of pxs) svg+=`<rect x="${p.x}" y="${p.y}" width="1" height="1"/>\n`;
+    svg+=`</g>\n`;
+  }
+  svg+=`</svg>`;
+  const blob=new Blob([svg],{type:'image/svg+xml'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`icon-${iconSize}x${iconSize}.svg`;a.click();
+  URL.revokeObjectURL(url);
+}
+function copyBase64() {
+  const composite = compositeLayers();
+  const c = document.createElement('canvas');
+  c.width=iconSize;c.height=iconSize;
+  c.getContext('2d').putImageData(composite,0,0);
+  const b64 = c.toDataURL('image/png');
+  navigator.clipboard.writeText(b64).then(()=>{
+    statusMsg.textContent='已复制 Base64 到剪贴板';
+    setTimeout(()=>statusMsg.textContent='',2000);
+  }).catch(()=>{
+    statusMsg.textContent='复制失败';
+    setTimeout(()=>statusMsg.textContent='',2000);
+  });
+}
+function importImage(file) {
+  if (!file) { statusMsg.textContent='导入失败：无效文件'; setTimeout(()=>statusMsg.textContent='',2000); return; }
+  const reader = new FileReader();
+  reader.onerror = ()=>{ statusMsg.textContent='导入失败：无法读取文件'; setTimeout(()=>statusMsg.textContent='',2000); };
+  reader.onload = ()=>{
+    const img = new Image();
+    img.onerror = ()=>{ statusMsg.textContent='导入失败：不支持的图片格式'; setTimeout(()=>statusMsg.textContent='',2000); };
+    img.onload = ()=>{
+      const c = document.createElement('canvas');
+      const scale = Math.min(iconSize/img.width, iconSize/img.height, 1);
+      c.width=iconSize;c.height=iconSize;
+      const ctx=c.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      const dw = Math.round(img.width*scale);
+      const dh = Math.round(img.height*scale);
+      const dx = Math.floor((iconSize-dw)/2);
+      const dy = Math.floor((iconSize-dh)/2);
+      ctx.clearRect(0,0,iconSize,iconSize);
+      ctx.drawImage(img, dx, dy, dw, dh);
+      const imported = ctx.getImageData(0,0,iconSize,iconSize);
+      pushUndo();
+      layers[activeLayerIdx].data = imported;
+      renderAll();
+      updateLayerListUI();
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+$('#export-png').addEventListener('click', exportPNG);
+$('#export-ico').addEventListener('click', exportICO);
+$('#export-svg').addEventListener('click', exportSVG);
+$('#copy-b64').addEventListener('click', copyBase64);
+$('#import-file').addEventListener('click', ()=>$('#file-input').click());
+$('#file-input').addEventListener('change', (e)=>{
+  if(e.target.files[0]) importImage(e.target.files[0]);
+  e.target.value='';
+});
+
+// ── Clear ─────────────────────────────────────────────
+$('#clear-btn').addEventListener('click', ()=>{
+  if (confirm('清除当前图层「'+layers[activeLayerIdx].name+'」的所有内容？')) {
+    pushUndo();
+    layers[activeLayerIdx].data = createLayerData();
+    renderAll();
+  }
+});
+
+// ── Paste from clipboard ──────────────────────────────
+document.addEventListener('paste', e=>{
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      importImage(item.getAsFile());
+      return;
+    }
+  }
+});
+
+// ── Init ──────────────────────────────────────────────
+function init() {
+  // Create default layer
+  layers = [];
+  addLayer('背景');
+  fgColor = [255,255,255,255];
+  // Set initial size
+  iconSize = 32;
+  zoom = 10; // 32*10=320px view
+  updateAllUI();
+  updateSizeSelect();
+  renderAll();
+  setTool('pencil');
+  updateUndoRedoUI();
+  // Fit on load and resize
+  setTimeout(zoomFit, 100);
+  window.addEventListener('resize', ()=>{
+    hideTextInput();
+    clearTimeout(window._resizeTimer);
+    window._resizeTimer = setTimeout(zoomFit, 200);
+  });
+}
+init();
+
+// ── Log ───────────────────────────────────────────────
+console.log('%c🎨 PixelCraft Icon Editor %cready',
+  'font-size:16px;font-weight:bold;',
+  'font-size:12px;');
+console.log('%cFeatures: pencil, eraser, eyedropper, fill, line | layers | undo/redo | PNG/SVG/Base64 | grid | dark/light theme | touch support',
+  'color:#888');
+})();
+</script>
+</body>
+</html>
