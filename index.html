@@ -245,10 +245,11 @@ body{
       <input type="range" id="alpha-slider" min="0" max="255" value="255" title="不透明度">
       <span id="alpha-val">255</span>
     </div>
-    <div style="display:flex;gap:4px;align-items:center;font-size:11px;color:var(--fg2)">
+    <div style="display:flex;gap:4px;align-items:center;font-size:11px;color:var(--fg2);flex-wrap:wrap">
       <span>当前:</span>
       <span id="cur-color-swatch" style="display:inline-block;width:16px;height:16px;border-radius:3px;border:1px solid var(--border);background:#fff"></span>
-      <span id="cur-color-text">#ffffffff</span>
+      <input id="hex-input" value="#ffffff" maxlength="9" style="width:80px;font-size:11px;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:3px;padding:1px 4px;font-family:monospace;outline:none">
+      <span id="cur-color-alpha" style="min-width:20px"></span>
     </div>
   </div>
 
@@ -806,7 +807,8 @@ function updateColorUI() {
   $('#alpha-slider').value = fgColor[3];
   $('#alpha-val').textContent = fgColor[3];
   $('#cur-color-swatch').style.background = rgbaStr(fgColor);
-  $('#cur-color-text').textContent = hex;
+  $('#hex-input').value = fgColor[3] === 255 ? hex.slice(0,7) : hex;
+  $('#cur-color-alpha').textContent = fgColor[3] < 255 ? ' α='+fgColor[3] : '';
   // Update palette active
   $$('#palette .swatch').forEach(s=>{
     const c = s.dataset.color;
@@ -1601,6 +1603,29 @@ $('#alpha-slider').addEventListener('input', ()=>{
   fgColor[3] = parseInt($('#alpha-slider').value);
   $('#alpha-val').textContent = fgColor[3];
   updateColorUI();
+});
+$('#hex-input').addEventListener('change', ()=>{
+  let val = $('#hex-input').value.trim();
+  if (!val) { updateColorUI(); return; }
+  if (!val.startsWith('#')) val = '#'+val;
+  if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+    // 6-digit: apply with current alpha
+    const rgba = hexToRgba(val);
+    rgba[3] = fgColor[3];
+    fgColor = rgba;
+  } else if (/^#[0-9a-fA-F]{8}$/.test(val)) {
+    // 8-digit: use provided alpha
+    fgColor = hexToRgba(val);
+  } else {
+    // invalid — reset to current
+    updateColorUI();
+    return;
+  }
+  updateColorUI();
+});
+$('#hex-input').addEventListener('keydown', e=>{
+  if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
+  if (e.key === 'Escape') { e.preventDefault(); updateColorUI(); e.target.blur(); }
 });
 
 // ── Size ──────────────────────────────────────────────
