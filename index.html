@@ -442,11 +442,10 @@ function pushUndo() {
 }
 function undo() {
   if (!undoStack.length) return;
-  // If floating selection is active (lifted from canvas), undo restores the original
-  // so the floating preview is now stale — cancel it without restoring (undo already did)
-  if (floatingSel && floatingSel.origX !== undefined) {
-    floatingSel = null; _selDrag = null; statusMsg.textContent = '';
-  }
+  // Any transient state is stale after undo — clear it
+  if (floatingSel) { floatingSel = null; _selDrag = null; }
+  if (textPreview) { textPreview = null; _previewDrag = null; }
+  statusMsg.textContent = '';
   const entry = undoStack.pop();
   if (entry.layerIdx<0||entry.layerIdx>=layers.length) { clearHistory(); renderAll(); return; }
   redoStack.push({ layerIdx: entry.layerIdx, data: snapshotLayer(entry.layerIdx) });
@@ -457,6 +456,10 @@ function undo() {
 }
 function redo() {
   if (!redoStack.length) return;
+  // Clear any transient state
+  if (floatingSel) { floatingSel = null; _selDrag = null; }
+  if (textPreview) { textPreview = null; _previewDrag = null; }
+  statusMsg.textContent = '';
   const entry = redoStack.pop();
   if (entry.layerIdx<0||entry.layerIdx>=layers.length) { clearHistory(); renderAll(); return; }
   undoStack.push({ layerIdx: entry.layerIdx, data: snapshotLayer(entry.layerIdx) });
@@ -1155,13 +1158,13 @@ document.addEventListener('keydown', e=>{
   if (ctrl && key==='s') { if (!inInput) e.preventDefault(); exportPNG(); return; }
   if (ctrl && key==='g') { if (!inInput) e.preventDefault(); toggleGrid(); return; }
   // ── Selection clipboard shortcuts ──────────
-  if (ctrl && key==='c' && selectRect && !floatingSel && !textPreview) {
+  if (ctrl && key==='c' && selectRect && !floatingSel && !textPreview && !inInput) {
     e.preventDefault(); copySelection(); return;
   }
-  if (ctrl && key==='x' && selectRect && !floatingSel && !textPreview) {
+  if (ctrl && key==='x' && selectRect && !floatingSel && !textPreview && !inInput) {
     e.preventDefault(); cutSelection(); return;
   }
-  if (ctrl && key==='v' && selClipboard && !textPreview) {
+  if (ctrl && key==='v' && selClipboard && !textPreview && !inInput) {
     e.preventDefault(); pasteSelection(); return;
   }
   // ── Escape / Backspace / Delete / Enter (non-input area) ─────
@@ -1233,13 +1236,13 @@ function setTool(tool) {
   // so commitText sees display:none and returns early
   if (tool !== 'text' && activeTool === 'text') {
     hideTextInput();
-    cancelTextPreview();
+    cancelTextPreview(true); // skip render — we'll render once at end if needed
   }
   activeTool = tool;
   isDrawing = false;  // reset any stale drawing state
   // If leaving select tool, clear marquee rect (keep floatingSel until committed/cancelled)
   if (tool !== 'select') selectRect = null;
-  if (floatingSel && tool !== 'select') cancelFloatingSel();
+  if (floatingSel && tool !== 'select') cancelFloatingSel(true); // skip render
   const toolBtns = ['#t-pencil','#t-eraser','#t-eyedropper','#t-fill','#t-line','#t-text','#t-select'];
   toolBtns.forEach(s=>$(s).classList.remove('active'));
   const btnMap = {pencil:'#t-pencil',eraser:'#t-eraser',eyedropper:'#t-eyedropper',fill:'#t-fill',line:'#t-line',text:'#t-text',select:'#t-select'};
@@ -1248,6 +1251,7 @@ function setTool(tool) {
   const names = {pencil:'铅笔',eraser:'橡皮',eyedropper:'取色器',fill:'填充',line:'直线',text:'文字',select:'框选'};
   statusTool.textContent = '工具: '+names[tool];
   mainCanvas.style.cursor = tool === 'text' ? 'text' : 'crosshair';
+  renderAll(); // after deferred state changes
 }
 // Tool button bindings
 $('#t-pencil').addEventListener('click',()=>setTool('pencil'));
